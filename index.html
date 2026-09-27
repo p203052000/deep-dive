@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>萬米深潛</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@700;900&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0}
+:root{
+  color-scheme: dark;
+  --ink:#e4f1f5;
+  --muted:#a4c3d0;
+  --glow:#8fd8ff;
+  --rust:#e39a6f;
+  --panel:rgba(3,17,30,.64);
+  --line:rgba(170,215,232,.22);
+  --sky-ink:#0a3550;
+  --serif:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --gw:200px;
+}
+html,body{background:#031425;color:var(--ink);font-family:var(--sans)}
+#track{height:2400vh}
+#stage{position:fixed;inset:0;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#layer{position:absolute;inset:0;pointer-events:none}
+
+.card{position:absolute;top:0;width:clamp(230px,30vw,340px);padding:14px 16px 16px;background:var(--panel);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:3px;will-change:transform,opacity}
+.card.l{left:max(16px,6vw)}
+.card.r{right:calc(var(--gw) + max(32px,5vw))}
+.card svg{width:120px;height:70px;display:block;margin-bottom:8px;color:#d3eaf2;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;animation:bob 5s ease-in-out infinite}
+.card svg .f{fill:currentColor;stroke:none}
+.card.lum svg{color:var(--glow);filter:drop-shadow(0 0 5px rgba(143,216,255,.8))}
+.card.human svg{color:var(--rust)}
+.card .dep{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--glow);font-variant-numeric:tabular-nums}
+.card.human .dep{color:var(--rust)}
+.card h3{font-family:var(--serif);font-weight:700;font-size:20px;margin:2px 0 6px;text-wrap:balance}
+.card p{margin:0;font-size:14px;line-height:1.75;color:var(--muted)}
+.card button{pointer-events:auto;margin-top:12px}
+
+.zone{position:absolute;left:0;right:0;top:0;padding-inline:max(16px,4vw) calc(var(--gw) + max(32px,5vw));will-change:transform}
+.zone .row{display:flex;align-items:center;gap:12px}
+.zone .zd{font-family:var(--mono);font-size:12px;color:var(--glow);font-variant-numeric:tabular-nums;white-space:nowrap}
+.zone .zl{flex:1;border-top:1px dashed rgba(170,215,232,.4)}
+.zone .zn{font-family:var(--serif);font-weight:900;font-size:clamp(18px,2.4vw,26px);letter-spacing:.08em;white-space:nowrap}
+.zone .zc{margin:6px 0 0;font-size:13px;color:var(--muted);text-align:right}
+
+#hero{position:absolute;top:calc(env(safe-area-inset-top,0px) + 7vh);left:max(16px,6vw);right:16px;max-width:34rem;color:var(--sky-ink)}
+#hero .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.75}
+#hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(36px,6.4vw,68px);line-height:1.1;margin:8px 0 12px;text-wrap:balance}
+#hero p{font-size:15px;line-height:1.75;margin:0 0 16px;max-width:30rem}
+
+button{font:500 14px var(--sans);cursor:pointer;border-radius:999px;padding:9px 18px;border:1px solid transparent}
+.btn-dark{background:var(--sky-ink);color:#eaf6fa}
+.btn-line{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn-line:hover{border-color:var(--glow);color:var(--glow)}
+button:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
+
+#gauge{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:var(--gw);padding:16px;background:var(--panel);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:3px;box-sizing:border-box}
+.g-label{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--muted)}
+.g-depth{font-family:var(--mono);font-size:34px;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--ink);margin:4px 0 12px}
+.g-depth small{font-size:14px;color:var(--muted);margin-left:4px}
+.g-rows{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px}
+.g-rows dt{color:var(--muted)} .g-rows dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.g-zone{color:var(--glow)}
+#gtrack{position:relative;height:150px;margin:16px 0 14px;display:grid;grid-template-columns:10px 1fr;gap:10px}
+#gbar{position:relative;border-radius:2px;background:linear-gradient(#4ab4d6 0%,#0e4a7a 13.5%,#04162c 30.2%,#020b18 60.5%,#010408 100%)}
+#gdot{position:absolute;left:-4px;width:18px;height:2px;background:var(--glow);box-shadow:0 0 8px var(--glow)}
+#gticks{position:relative;font-family:var(--mono);font-size:10px;color:var(--muted)}
+#gticks span{position:absolute;left:0;transform:translateY(-50%);white-space:nowrap}
+#gauge .ctl{display:flex;gap:8px;flex-wrap:wrap}
+#prog{display:none}
+
+@keyframes bob{50%{transform:translateY(-4px)}}
+
+@media (max-width:720px){
+  :root{--gw:0px}
+  .card{width:min(76vw,320px)}
+  .card.l{left:16px} .card.r{right:16px}
+  .card svg{width:96px;height:56px;margin-bottom:4px}
+  .card h3{font-size:18px}
+  .card p{font-size:13px;line-height:1.65}
+  .zone{padding-inline:16px}
+  .zone .zc{text-align:left}
+  #gauge{top:auto;bottom:0;left:0;right:0;width:auto;transform:none;border-radius:0;border-inline:0;border-bottom:0;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:auto 1fr auto;gap:4px 14px;align-items:center}
+  .g-label{display:none}
+  .g-depth{font-size:24px;margin:0}
+  .g-rows{grid-template-columns:auto auto auto auto;font-size:12px;gap:2px 8px}
+  #gtrack{display:none}
+  #prog{display:block;position:absolute;left:0;right:0;top:0;height:2px;background:rgba(170,215,232,.15)}
+  #prog i{display:block;height:100%;background:var(--glow);width:0}
+  #gauge .ctl #surface{display:none}
+  #hero{top:calc(env(safe-area-inset-top,0px) + 4vh)}
+  #hero p{font-size:14px}
+}
+@media (prefers-reduced-motion:reduce){.card svg{animation:none}}
+</style>
+</head>
+<body>
+
+<div id="track" aria-hidden="true"></div>
+<div id="stage">
+  <canvas id="sea"></canvas>
+  <div id="layer"></div>
+  <section id="hero">
+    <div class="eyebrow">0 m · 海平面</div>
+    <h1>往下，一直往下</h1>
+    <p>從海面出發，潛到馬里亞納海溝最深處，大約 10,935 公尺。沿途會經過鯨魚、沉船、會發光的魚，還有一個比多數人類早到的塑膠袋。往下滑，或直接開始下潛。</p>
+    <button class="btn-dark" id="heroPlay" type="button">開始下潛</button>
+  </section>
+  <aside id="gauge" aria-live="off">
+    <div id="prog"><i></i></div>
+    <div>
+      <div class="g-label">DEPTH 深度</div>
+      <div class="g-depth"><span id="gd">0</span><small>m</small></div>
+    </div>
+    <dl class="g-rows">
+      <dt>水壓</dt><dd id="gp">1 atm</dd>
+      <dt>水溫</dt><dd id="gt">約 27 °C</dd>
+      <dt>光線</dt><dd id="gl">陽光</dd>
+      <dt>分區</dt><dd id="gz" class="g-zone">透光帶</dd>
+    </dl>
+    <div id="gtrack"><div id="gbar"><div id="gdot"></div></div><div id="gticks"></div></div>
+    <div class="ctl">
+      <button class="btn-line" id="play" type="button">開始下潛</button>
+      <button class="btn-line" id="surface" type="button">回到海面</button>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function(){
+const D = 10935;
+const SVG = {
+turtle:'<ellipse cx="60" cy="38" rx="24" ry="18"/><path d="M60 20v36M42 30q18 8 36 0M42 46q18-8 36 0"/><ellipse cx="60" cy="13" rx="6" ry="6"/><path d="M40 28q-16-12-26-6q8 6 24 12M80 28q16-12 26-6q-8 6-24 12M44 52l-14 10M76 52l14 10M60 56v8"/>',
+flag:'<path d="M36 8v56"/><rect x="36" y="10" width="46" height="30" rx="2"/><path d="M36 10l46 30" stroke-width="6"/><path d="M20 64h80" stroke-dasharray="3 5"/>',
+bluewhale:'<path d="M6 36q10-14 40-14q38 0 56 10l10-10q-2 11 0 22l-10-8q-22 12-58 10q-30-2-38-10z"/><path d="M14 40q22 7 46 6M20 43q18 5 36 4"/><circle class="f" cx="26" cy="33" r="1.6"/><path d="M58 44q4 8 12 10"/>',
+diver:'<circle cx="24" cy="32" r="6"/><rect x="34" y="20" width="28" height="7" rx="3.5"/><path d="M30 34l48 3l22-7M78 37l22 9M42 35l-8 12M52 36l-4 12"/><circle cx="18" cy="18" r="2.5"/><circle cx="14" cy="9" r="3.5"/><circle cx="22" cy="4" r="2"/>',
+lantern:'<path d="M18 35q20-16 50-9q12 3 20 9q-8 6-20 9q-30 7-50-9z"/><path d="M88 35l16-11v22z"/><circle cx="30" cy="32" r="4"/><circle class="f" cx="30" cy="32" r="1.5"/><circle class="f" cx="40" cy="41" r="1.6"/><circle class="f" cx="48" cy="42" r="1.6"/><circle class="f" cx="56" cy="42" r="1.6"/><circle class="f" cx="64" cy="41" r="1.6"/><circle class="f" cx="72" cy="39" r="1.6"/><circle class="f" cx="52" cy="30" r="1.6"/>',
+penguin:'<path d="M16 36q10-14 40-12q30 2 52 10q-20 10-52 10q-30 0-40-8z"/><path d="M16 36l-10-1l10 3"/><circle class="f" cx="24" cy="33" r="1.5"/><path d="M50 38q10 9 26 12M104 34l10-4M104 36l10 3"/><path d="M28 30q20-4 50 0" stroke-dasharray="2 4"/>',
+burj:'<path d="M48 2h24l-3 14h-4l-2 14h-3l-1 14h-2l-1 12l-1 12l-1-12l-1-12h-2l-1-14h-3l-2-14h-4z"/><path d="M10 2h100" stroke-dasharray="4 4"/>',
+angler:'<path d="M30 40q0-22 30-22q28 0 34 20l12-9v24l-12-7q-6 16-34 16q-30 0-30-22z"/><path d="M30 42l5-4l3 6l4-5l3 6l4-5l3 5"/><circle cx="46" cy="32" r="3"/><path d="M52 19q-6-13-22-11"/><circle class="f" cx="28" cy="8" r="4"/>',
+sperm:'<path d="M4 22h46q30 0 50 13l12-10v22l-12-6q-20 12-50 10H18Q4 51 4 37z"/><circle class="f" cx="30" cy="34" r="1.5"/><path d="M8 48q8 4 18 4"/>',
+beaked:'<path d="M4 38l12-3q10-12 40-12q30 0 46 10l12-8v18l-12-6q-20 10-46 8q-30-2-40-4z"/><circle class="f" cx="24" cy="34" r="1.4"/><path d="M60 24l4-7l6 7"/>',
+titanic:'<path d="M8 40h46l-4 14H12z"/><rect x="16" y="29" width="6" height="11"/><rect x="28" y="29" width="6" height="11"/><rect x="40" y="29" width="6" height="11"/><path d="M68 44l44-7l-3 14l-38 6z"/><rect x="92" y="30" width="6" height="9" transform="rotate(-9 95 34)"/><path d="M4 62h112" stroke-dasharray="3 5"/>',
+dumbo:'<path d="M42 40q0-26 18-26q18 0 18 26q-9-4-18 4q-9-8-18-4z"/><path d="M44 24q-14-9-19 3q8 3 17 0M76 24q14-9 19 3q-8 3-17 0"/><circle class="f" cx="53" cy="30" r="1.8"/><circle class="f" cx="67" cy="30" r="1.8"/><path d="M42 40q-6 14 4 22q8-8 14-18q6 10 14 18q10-8 4-22"/>',
+cucumber:'<path d="M14 46q0-16 20-18q40-4 62 4q12 6 6 14q-10 8-40 8q-40 0-48-8z"/><path d="M34 29l-2-5M50 27l0-5M66 27l1-5M82 29l2-5M24 34l-4-3"/><path d="M96 34l8-6M98 36l9-2"/><path d="M4 60q30-4 56 0t56 0"/>',
+snail:'<path d="M12 36q0-14 20-14q20 0 40 8q20 6 38 6q-16 4-38 8q-20 6-40 6q-20 0-20-14z"/><circle cx="24" cy="32" r="2.5"/><path d="M40 26q16-6 34 4M40 46q16 4 30-4" stroke-dasharray="2 3"/>',
+amphi:'<path d="M22 46q8-30 42-28q26 2 32 28"/><path d="M34 30l-4-8M46 22l-2-9M60 19l0-9M74 21l2-9M86 28l4-8"/><path d="M36 42l-4 14M48 38l-2 16M62 36v16M76 38l2 16M88 44l4 12"/><path d="M22 46q-10-6-16-20M22 46q-12 0-18-8"/><circle class="f" cx="28" cy="40" r="1.6"/>',
+bottom:'<path d="M50 18h20l4 30q-14 6-28 0z"/><path d="M54 18q0-8 6-8q6 0 6 8"/><path d="M2 60q14-8 28-2t30-2q16-6 30 0t28-2"/>'
+};
+const ITEMS = [
+ {d:10, s:'turtle', t:'綠蠵龜', x:'才 10 公尺，水壓已經是海面的兩倍。綠蠵龜常在這個深度吃海草，你的耳朵大概已經在抗議了。'},
+ {d:40, s:'flag', t:'休閒潛水的上限', x:'多數休閒潛水訓練把 40 公尺當作界線。紅光在前十幾公尺就被水吸收掉了，這裡看什麼都偏藍綠。'},
+ {d:150, s:'bluewhale', t:'藍鯨', x:'地球上體型最大的動物。覓食時常潛到一兩百公尺，張嘴吞下一大片磷蝦群。'},
+ {z:200, n:'暮光帶', c:'陽光到這裡已經不夠讓植物行光合作用'},
+ {d:332, s:'diver', t:'人類水肺潛水紀錄', x:'2014 年，埃及潛水員 Ahmed Gabr 潛到 332 公尺。下去只花十幾分鐘，為了減壓，上來卻花了十幾個小時。', h:1},
+ {d:450, s:'lantern', t:'燈籠魚', x:'身上有一排會發光的小點。許多燈籠魚每晚游上淺海覓食、天亮前沉回深處，是地球規模最大的日常通勤之一。', lum:1},
+ {d:564, s:'penguin', t:'帝王企鵝', x:'有紀錄顯示帝王企鵝能潛到 500 多公尺深。提醒一下，牠是一隻鳥。'},
+ {d:828, s:'burj', t:'哈里發塔', x:'世界最高的大樓高 828 公尺。把它倒插進海裡，塔尖大約停在這裡。', h:1},
+ {z:1000, n:'午夜帶', c:'陽光完全到不了，剩下的光幾乎都是生物自己發的'},
+ {d:1500, s:'angler', t:'鮟鱇魚', x:'用頭上會發光的「釣竿」引誘獵物。有些種類的雄魚找到雌魚後會咬住不放，最後融合成對方身體的一部分。', lum:1},
+ {d:2000, s:'sperm', t:'抹香鯨', x:'能潛到兩千公尺左右獵捕魷魚，包括大王烏賊。有些抹香鯨皮膚上還留著吸盤造成的圓形疤痕。'},
+ {d:2992, s:'beaked', t:'柯氏喙鯨', x:'哺乳類閉氣下潛的最深紀錄：2,992 公尺。最長的一次潛水紀錄超過三個半小時。'},
+ {d:3800, s:'titanic', t:'鐵達尼號', x:'1912 年沉沒，斷成兩截躺在約 3,800 公尺的海床上。直到 1985 年才被找到。', h:1},
+ {z:4000, n:'深淵帶', c:'海洋平均深度大約 3,700 公尺，大部分海床都在這一層'},
+ {d:5000, s:'dumbo', t:'小飛象章魚', x:'拍著像耳朵的鰭在水裡慢慢飄。已知住得最深的章魚之一，曾在 7,000 公尺附近被發現。', lum:1},
+ {z:6000, n:'超深淵帶', c:'英文 hadal 取自希臘神話的冥王黑帝斯，幾乎只出現在海溝裡'},
+ {d:7000, s:'cucumber', t:'海參', x:'在超深淵帶的海床上，海參常是數量最多的大型動物。邊走邊吃沉積物，是海底的清潔隊。'},
+ {d:8336, s:'snail', t:'蝸牛魚', x:'2022 年在日本伊豆－小笠原海溝拍到，是目前最深的魚類紀錄。科學家推測，魚類能活的極限大約就在 8,200 到 8,400 公尺之間。'},
+ {d:10000, s:'amphi', t:'大王端足蟲', x:'長得像蝦的小生物。牠們能分解纖維素，靠從陸地一路沉下來的木頭和植物碎屑過活。'},
+ {d:10935, s:'bottom', t:'挑戰者深淵', x:'馬里亞納海溝最深處。水壓約 1,100 大氣壓，每平方公分承受超過一公噸。把聖母峰放進來，峰頂離海面還有兩公里。1960 年，Trieste 號花了將近五小時才抵達這裡。後來研究人員在接近這個深度的地方記錄到一個塑膠袋，它比大多數人類都早到。', h:1, end:1}
+];
+const ZONES=[[0,'透光帶'],[200,'暮光帶'],[1000,'午夜帶'],[4000,'深淵帶'],[6000,'超深淵帶']];
+
+const layer=document.getElementById('layer');
+let side=0;
+ITEMS.forEach(it=>{
+  it.pe=Math.sqrt((it.z!=null?it.z:it.d)/D);
+  const el=document.createElement('div');
+  if(it.z!=null){
+    el.className='zone';
+    el.innerHTML='<div class="row"><span class="zd">'+it.z.toLocaleString('en-US')+' m</span><span class="zl"></span><span class="zn">'+it.n+'</span></div><p class="zc">'+it.c+'</p>';
+  }else{
+    el.className='card '+(side++%2?'r':'l')+(it.lum?' lum':'')+(it.h?' human':'');
+    el.innerHTML='<svg viewBox="0 0 120 70" aria-hidden="true">'+SVG[it.s]+'</svg><div class="dep">'+it.d.toLocaleString('en-US')+' m</div><h3>'+it.t+'</h3><p>'+it.x+'</p>'+(it.end?'<button class="btn-line" type="button" data-up>回到海面</button>':'');
+  }
+  layer.appendChild(el); it.el=el;
+});
+const ticks=document.getElementById('gticks');
+[[0,'0'],[200,'200'],[1000,'1,000'],[4000,'4,000'],[6000,'6,000'],[10935,'10,935']].forEach(([d,l])=>{
+  const s=document.createElement('span'); s.textContent=l+' m'; s.style.top=(Math.sqrt(d/D)*100)+'%'; ticks.appendChild(s);
+});
+
+const cv=document.getElementById('sea'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1,SPAN=1;
+function resize(){
+  DPR=Math.min(2,window.devicePixelRatio||1); W=innerWidth; H=innerHeight; SPAN=H*12;
+  cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  ITEMS.forEach(it=>it.h2=it.el.offsetHeight/2);
+}
+addEventListener('resize',resize);
+
+const WC=[[0,[74,180,214]],[30,[33,128,178]],[150,[14,74,122]],[400,[8,44,82]],[1000,[4,22,44]],[3000,[2,11,24]],[11500,[1,3,8]]];
+const TC=[[0,27],[50,26],[150,20],[300,12],[600,7],[1000,4.5],[2000,2.8],[4000,1.8],[11000,2.4]];
+function lerpStops(S,d){ if(d<=S[0][0])return S[0][1]; for(let i=1;i<S.length;i++){ if(d<=S[i][0]){const a=S[i-1],b=S[i],k=(d-a[0])/(b[0]-a[0]); return Array.isArray(a[1])?a[1].map((v,j)=>v+(b[1][j]-v)*k):a[1]+(b[1]-a[1])*k;}} return S[S.length-1][1]; }
+const rgb=c=>'rgb('+c.map(Math.round).join(',')+')';
+
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const snow=Array.from({length:140},()=>({x:Math.random(),y:Math.random(),r:rnd(.5,1.8),v:rnd(.2,1)}));
+const sparks=Array.from({length:46},()=>({x:Math.random(),y:Math.random(),ph:rnd(0,6.28),sp:rnd(.4,1.4),r:rnd(1,2.4)}));
+
+function draw(p,t){
+  const yS=H*.5+(0-p)*SPAN;
+  ctx.clearRect(0,0,W,H);
+  if(yS>0){ const g=ctx.createLinearGradient(0,0,0,yS); g.addColorStop(0,'#e8f5f8'); g.addColorStop(1,'#a9d9ea'); ctx.fillStyle=g; ctx.fillRect(0,0,W,Math.min(H,yS)); }
+  const y0=Math.max(0,yS);
+  if(y0<H){
+    const g=ctx.createLinearGradient(0,y0,0,H);
+    for(let i=0;i<=8;i++){ const y=y0+(H-y0)*i/8, pe=Math.max(0,p+(y-H*.5)/SPAN); g.addColorStop(i/8,rgb(lerpStops(WC,D*pe*pe))); }
+    ctx.fillStyle=g; ctx.fillRect(0,y0,W,H-y0);
+  }
+  const dC=D*p*p;
+  // light rays
+  const ra=Math.max(0,1-dC/260)*.16;
+  if(ra>0.002){
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    for(let i=0;i<6;i++){ const x=W*(i/5)+Math.sin(t*.0002+i)*40; const top=Math.max(0,yS);
+      const g=ctx.createLinearGradient(0,top,0,H); g.addColorStop(0,'rgba(220,245,255,'+ra+')'); g.addColorStop(1,'rgba(220,245,255,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(x-18,top); ctx.lineTo(x+18,top); ctx.lineTo(x+120+i*10,H); ctx.lineTo(x+40,H); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
+  // surface waves
+  if(yS>-20&&yS<H+20){
+    ctx.strokeStyle='rgba(255,255,255,.75)'; ctx.lineWidth=2; ctx.beginPath();
+    for(let x=0;x<=W;x+=8){ const y=yS+Math.sin(x*.02+t*.002)*3+Math.sin(x*.047-t*.0013)*2; x?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+    ctx.stroke();
+  }
+  // marine snow
+  const sa=Math.min(1,Math.max(0,(dC-80)/300))*.55;
+  if(sa>0){ for(const s of snow){ let y=((s.y*H-p*SPAN*.6*s.v+(reduce?0:t*.01*s.v))%H+H)%H; if(y<yS)continue;
+    ctx.fillStyle='rgba(214,232,240,'+sa*s.v+')'; ctx.fillRect(s.x*W,y,s.r,s.r); } }
+  // bioluminescence
+  const ba=dC<150?0:dC<400?(dC-150)/250:dC<3000?1:Math.max(.3,1-(dC-3000)/7000);
+  if(ba>0){ ctx.save(); ctx.globalCompositeOperation='lighter';
+    for(const s of sparks){ const y=((s.y*H-p*SPAN*.35)%H+H)%H; const a=ba*Math.pow(Math.max(0,Math.sin(t*.001*s.sp+s.ph)),10); if(a<.02)continue;
+      const g=ctx.createRadialGradient(s.x*W,y,0,s.x*W,y,s.r*6); g.addColorStop(0,'rgba(160,225,255,'+a+')'); g.addColorStop(1,'rgba(90,180,255,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(s.x*W,y,s.r*6,0,6.3); ctx.fill(); }
+    ctx.restore(); }
+  // seafloor
+  const yF=H*.5+(1-p)*SPAN+H*.34;
+  if(yF<H){ ctx.fillStyle='#0d0c0a'; ctx.beginPath(); ctx.moveTo(0,H);
+    for(let x=0;x<=W;x+=12){ ctx.lineTo(x,yF+Math.sin(x*.013)*10+Math.sin(x*.041)*4); } ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='rgba(143,216,255,.15)'; ctx.stroke(); }
+}
+
+const gd=document.getElementById('gd'),gp=document.getElementById('gp'),gt=document.getElementById('gt'),gl=document.getElementById('gl'),gz=document.getElementById('gz'),gdot=document.getElementById('gdot'),prog=document.querySelector('#prog i'),hero=document.getElementById('hero');
+function gauge(p){
+  const d=D*p*p;
+  gd.textContent=Math.round(d).toLocaleString('en-US');
+  gp.textContent=Math.round(1+d/10.06).toLocaleString('en-US')+' atm';
+  gt.textContent='約 '+lerpStops(TC,d).toFixed(1)+' °C';
+  gl.textContent=d<200?'陽光':d<1000?'微光':'全黑';
+  let z=ZONES[0][1]; for(const [zd,zn] of ZONES) if(d>=zd) z=zn; gz.textContent=z;
+  gdot.style.top=(p*100)+'%'; prog.style.width=(p*100)+'%';
+  const ho=Math.max(0,1-p/0.018); hero.style.opacity=ho; hero.style.visibility=ho<.02?'hidden':'visible';
+}
+
+let playing=false,last=0;
+const playBtns=[document.getElementById('play'),document.getElementById('heroPlay')];
+function setPlay(v){ playing=v; last=0; document.getElementById('play').textContent=v?'暫停':'開始下潛'; }
+const maxScroll=()=>Math.max(1,document.documentElement.scrollHeight-innerHeight);
+playBtns.forEach(b=>b.addEventListener('click',()=>{ if(!playing&&scrollY>=maxScroll()-2) scrollTo(0,0); setPlay(!playing); }));
+document.getElementById('surface').addEventListener('click',()=>{setPlay(false);scrollTo(0,0);});
+layer.addEventListener('click',e=>{ if(e.target.closest('[data-up]')){setPlay(false);scrollTo(0,0);} });
+['wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{ if(playing) setPlay(false); },{passive:true}));
+addEventListener('keydown',e=>{ if(['ArrowDown','ArrowUp','PageDown','PageUp','Space','Home','End'].includes(e.code)&&playing&&!e.target.closest('button')) setPlay(false); });
+
+const DUR=150000; let acc=0;
+function frame(t){
+  if(playing){ if(last){ acc+=maxScroll()*(t-last)/DUR; const step=Math.floor(acc); if(step>=1){ acc-=step; scrollTo(0,scrollY+step);} } last=t;
+    if(scrollY>=maxScroll()-1) setPlay(false); }
+  const p=Math.min(1,Math.max(0,scrollY/maxScroll()));
+  draw(p,t);
+  for(const it of ITEMS){
+    const y=H*.5+(it.pe-p)*SPAN;
+    if(y<-400||y>H+400){ if(it.el.style.visibility!=='hidden') it.el.style.visibility='hidden'; continue; }
+    it.el.style.visibility='visible';
+    it.el.style.transform='translateY('+(y-(it.z!=null?12:it.h2))+'px)';
+    it.el.style.opacity=Math.max(0,Math.min(1,1.2-Math.abs(y-H*.5)/(H*.62)));
+  }
+  gauge(p);
+  requestAnimationFrame(frame);
+}
+resize(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
