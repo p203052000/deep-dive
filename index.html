@@ -43,6 +43,18 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .card h3{font-family:var(--serif);font-weight:700;font-size:20px;margin:2px 0 6px;text-wrap:balance}
 .card p{margin:0;font-size:14px;line-height:1.75;color:var(--muted)}
 .card button{pointer-events:auto;margin-top:12px}
+.card .ph{position:relative;margin:-14px -16px 12px;aspect-ratio:16/10;max-width:none;overflow:hidden;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--line)}
+.card .ph svg{margin:0}
+.card .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s ease}
+.card .ph.ok img{opacity:1}
+.card .ph.ok svg{visibility:hidden}
+.card .ph figcaption{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;gap:8px;padding:14px 8px 5px;font-size:11px;line-height:1.3;color:#dbeaf0;background:linear-gradient(transparent,rgba(0,0,0,.65));opacity:0;transition:opacity .8s}
+.card .ph.ok figcaption{opacity:1}
+.card .ph figcaption a{color:inherit;pointer-events:auto;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(219,234,240,.5);white-space:nowrap}
+.card .ph figcaption a:focus-visible{outline:2px solid var(--glow)}
+#snd[aria-pressed="true"]{border-color:var(--glow);color:var(--glow)}
+#hero .acts{display:flex;gap:10px;flex-wrap:wrap}
+.btn-sky{background:transparent;color:var(--sky-ink);border-color:rgba(10,53,80,.35)}
 
 .zone{position:absolute;left:0;right:0;top:0;padding-inline:max(16px,4vw) calc(var(--gw) + max(32px,5vw));will-change:transform}
 .zone .row{display:flex;align-items:center;gap:12px}
@@ -85,6 +97,7 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
   .card{width:min(76vw,320px)}
   .card.l{left:16px} .card.r{right:16px}
   .card svg{width:96px;height:56px;margin-bottom:4px}
+  .card .ph{aspect-ratio:2/1;margin-bottom:10px}
   .card h3{font-size:18px}
   .card p{font-size:13px;line-height:1.65}
   .zone{padding-inline:16px}
@@ -114,7 +127,9 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
     <div class="eyebrow">0 m · 海平面</div>
     <h1>往下，一直往下</h1>
     <p>從海面出發，潛到馬里亞納海溝最深處，大約 10,935 公尺。沿途會經過鯨魚、沉船、會發光的魚，還有一個比多數人類早到的塑膠袋。往下滑，或直接開始下潛。</p>
-    <button class="btn-dark" id="heroPlay" type="button">開始下潛</button>
+    <div class="acts">
+      <button class="btn-dark" id="heroPlay" type="button">開始下潛（含音效）</button>
+    </div>
   </section>
   <aside id="gauge" aria-live="off">
     <div id="prog"><i></i></div>
@@ -131,6 +146,7 @@ button:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
     <div id="gtrack"><div id="gbar"><div id="gdot"></div></div><div id="gticks"></div></div>
     <div class="ctl">
       <button class="btn-line" id="play" type="button">開始下潛</button>
+      <button class="btn-line" id="snd" type="button" aria-pressed="false">音效：關</button>
       <button class="btn-line" id="surface" type="button">回到海面</button>
     </div>
   </aside>
@@ -179,6 +195,14 @@ const ITEMS = [
  {d:10000, s:'amphi', t:'大王端足蟲', x:'長得像蝦的小生物。牠們能分解纖維素，靠從陸地一路沉下來的木頭和植物碎屑過活。'},
  {d:10935, s:'bottom', t:'挑戰者深淵', x:'馬里亞納海溝最深處。水壓約 1,100 大氣壓，每平方公分承受超過一公噸。把聖母峰放進來，峰頂離海面還有兩公里。1960 年，Trieste 號花了將近五小時才抵達這裡。後來研究人員在接近這個深度的地方記錄到一個塑膠袋，它比大多數人類都早到。', h:1, end:1}
 ];
+// Wikipedia 條目：取其主圖（僅採用 Wikimedia Commons 上的自由授權檔案）
+const WP = {
+ turtle:['Green_sea_turtle'], flag:['Scuba_diving'], bluewhale:['Blue_whale'], diver:['Ahmed_Gabr','Scuba_set','圖：水肺潛水裝備'],
+ lantern:['Myctophidae'], penguin:['Emperor_penguin'], burj:['Burj_Khalifa'], angler:['Anglerfish'],
+ sperm:['Sperm_whale'], beaked:["Cuvier's_beaked_whale"], titanic:['Wreck_of_the_Titanic'], dumbo:['Grimpoteuthis'],
+ cucumber:['Scotoplanes',null,'圖：海豬，一種深海海參'], snail:['Pseudoliparis_swirei',null,'圖：馬里亞納獅子魚'],
+ amphi:['Hirondellea_gigas'], bottom:['Trieste_(bathyscaphe)',null,'圖：1960 年下潛的 Trieste 號']
+};
 const ZONES=[[0,'透光帶'],[200,'暮光帶'],[1000,'午夜帶'],[4000,'深淵帶'],[6000,'超深淵帶']];
 
 const layer=document.getElementById('layer');
@@ -191,10 +215,40 @@ ITEMS.forEach(it=>{
     el.innerHTML='<div class="row"><span class="zd">'+it.z.toLocaleString('en-US')+' m</span><span class="zl"></span><span class="zn">'+it.n+'</span></div><p class="zc">'+it.c+'</p>';
   }else{
     el.className='card '+(side++%2?'r':'l')+(it.lum?' lum':'')+(it.h?' human':'');
-    el.innerHTML='<svg viewBox="0 0 120 70" aria-hidden="true">'+SVG[it.s]+'</svg><div class="dep">'+it.d.toLocaleString('en-US')+' m</div><h3>'+it.t+'</h3><p>'+it.x+'</p>'+(it.end?'<button class="btn-line" type="button" data-up>回到海面</button>':'');
+    el.innerHTML='<figure class="ph"><svg viewBox="0 0 120 70" aria-hidden="true">'+SVG[it.s]+'</svg></figure><div class="dep">'+it.d.toLocaleString('en-US')+' m</div><h3>'+it.t+'</h3><p>'+it.x+'</p>'+(it.end?'<button class="btn-line" type="button" data-up>回到海面</button>':'');
   }
   layer.appendChild(el); it.el=el;
+  if(it.s) loadPhoto(it);
 });
+
+async function wpImage(title){
+  const r=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(title),{headers:{'Accept':'application/json'}});
+  if(!r.ok) throw 0;
+  const j=await r.json();
+  const orig=j.originalimage&&j.originalimage.source, th=j.thumbnail&&j.thumbnail.source;
+  if(!orig||!th||orig.indexOf('/wikipedia/commons/')<0) throw 0;
+  const file=decodeURIComponent(orig.split('/').pop());
+  return {th, big:th.replace(/\/(\d+)px-/,'/640px-'), file, page:j.content_urls&&j.content_urls.desktop&&j.content_urls.desktop.page};
+}
+async function loadPhoto(it){
+  const w=WP[it.s]; if(!w) return;
+  let info=null, cap=w[2]||'';
+  try{ info=await wpImage(w[0]); if(w[2]&&w[1]) cap=''; }
+  catch(e){ if(w[1]){ try{ info=await wpImage(w[1]); }catch(e2){} } }
+  if(!info) return;
+  const fig=it.el.querySelector('.ph'), img=new Image();
+  img.alt=it.t+'的照片'; img.decoding='async'; img.referrerPolicy='no-referrer';
+  const done=()=>{ fig.classList.add('ok'); it.h2=it.el.offsetHeight/2; };
+  img.onload=done;
+  img.onerror=()=>{ if(img.src!==info.th){ img.src=info.th; } };
+  img.src=info.big;
+  const fc=document.createElement('figcaption');
+  fc.innerHTML='<span></span><a target="_blank" rel="noopener">Wikimedia Commons</a>';
+  fc.firstChild.textContent=cap;
+  const a=fc.lastChild; a.href='https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(info.file.replace(/ /g,'_'));
+  a.title='照片來源與授權：'+info.file;
+  fig.appendChild(img); fig.appendChild(fc);
+}
 const ticks=document.getElementById('gticks');
 [[0,'0'],[200,'200'],[1000,'1,000'],[4000,'4,000'],[6000,'6,000'],[10935,'10,935']].forEach(([d,l])=>{
   const s=document.createElement('span'); s.textContent=l+' m'; s.style.top=(Math.sqrt(d/D)*100)+'%'; ticks.appendChild(s);
@@ -275,6 +329,97 @@ function gauge(p){
   const ho=Math.max(0,1-p/0.018); hero.style.opacity=ho; hero.style.visibility=ho<.02?'hidden':'visible';
 }
 
+// ---------- 音效：全部即時合成 ----------
+const Snd=(function(){
+  let ac=null,on=false,master,surf,surfF,rum,rumF,drone,droneG,creakG,lastPing=0,lastBub=0,lastClick=0,lastMoan=0,depth=0,echoIn;
+  function noiseBuf(brown){
+    const len=ac.sampleRate*4,b=ac.createBuffer(1,len,ac.sampleRate),d=b.getChannelData(0);let l=0;
+    for(let i=0;i<len;i++){const w=Math.random()*2-1; if(brown){l=(l+0.02*w)/1.02; d[i]=l*3.5;} else d[i]=w;}
+    return b;
+  }
+  function loop(buf){const s=ac.createBufferSource();s.buffer=buf;s.loop=true;s.start();return s;}
+  function init(){
+    ac=new (window.AudioContext||window.webkitAudioContext)();
+    master=ac.createGain(); master.gain.value=0; master.connect(ac.destination);
+    // 回音（深海聲納用）
+    echoIn=ac.createGain(); const dl=ac.createDelay(2); dl.delayTime.value=.42; const fb=ac.createGain(); fb.gain.value=.38;
+    const ef=ac.createBiquadFilter(); ef.type='lowpass'; ef.frequency.value=1800;
+    echoIn.connect(dl); dl.connect(ef); ef.connect(fb); fb.connect(dl); ef.connect(master); echoIn.connect(master);
+    const white=noiseBuf(false), brown=noiseBuf(true);
+    // 海面浪聲：白噪音 + 慢速起伏
+    surfF=ac.createBiquadFilter(); surfF.type='lowpass'; surfF.frequency.value=1400;
+    surf=ac.createGain(); surf.gain.value=0;
+    const swell=ac.createGain(); swell.gain.value=.5;
+    const lfo=ac.createOscillator(); lfo.frequency.value=.12; const lg=ac.createGain(); lg.gain.value=.45; lfo.connect(lg); lg.connect(swell.gain); lfo.start();
+    loop(white).connect(surfF); surfF.connect(swell); swell.connect(surf); surf.connect(master);
+    // 水下低沉的流動聲
+    rumF=ac.createBiquadFilter(); rumF.type='lowpass'; rumF.frequency.value=700; rumF.Q.value=.7;
+    rum=ac.createGain(); rum.gain.value=0;
+    loop(brown).connect(rumF); rumF.connect(rum); rum.connect(master);
+    // 深海壓迫感的低頻嗡鳴
+    droneG=ac.createGain(); droneG.gain.value=0; droneG.connect(master);
+    [41,41.6,61.5].forEach((f,i)=>{const o=ac.createOscillator(); o.type=i==2?'triangle':'sine'; o.frequency.value=f; const g=ac.createGain(); g.gain.value=i==2?.25:.5; o.connect(g); g.connect(droneG); o.start();});
+    // 船殼受壓的吱嘎聲（超深淵）
+    creakG=ac.createGain(); creakG.gain.value=0; creakG.connect(master);
+  }
+  function env(g,t,a,peak,rel){g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+rel);}
+  function bubble(){
+    const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),f=rnd(350,900);
+    o.frequency.setValueAtTime(f,t); o.frequency.exponentialRampToValueAtTime(f*2.6,t+.06);
+    env(g,t,.005,rnd(.03,.08),.07); o.connect(g); g.connect(master); o.start(t); o.stop(t+.12);
+  }
+  function ping(){
+    const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();
+    o.frequency.value=1250; env(g,t,.01,.09,1.6); o.connect(g); g.connect(echoIn); o.start(t); o.stop(t+1.8);
+  }
+  function click(){ // 抹香鯨的喀喀聲
+    const t=ac.currentTime,n=Math.floor(rnd(5,11)),gap=rnd(.35,.6);
+    for(let i=0;i<n;i++){const s=ac.createBufferSource(),b=ac.createBuffer(1,ac.sampleRate*.01,ac.sampleRate),d=b.getChannelData(0);
+      for(let k=0;k<d.length;k++)d[k]=(Math.random()*2-1)*Math.exp(-k/60);
+      s.buffer=b; const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2200; bp.Q.value=2;
+      const g=ac.createGain(); g.gain.value=.5; s.connect(bp); bp.connect(g); g.connect(echoIn); s.start(t+i*gap);}
+  }
+  function moan(){ // 鯨歌：低沉滑音
+    const t=ac.currentTime,o=ac.createOscillator(),o2=ac.createOscillator(),g=ac.createGain(),f=ac.createBiquadFilter();
+    f.type='lowpass'; f.frequency.value=500;
+    o.type='sawtooth'; o.frequency.setValueAtTime(95,t); o.frequency.linearRampToValueAtTime(140,t+1.6); o.frequency.linearRampToValueAtTime(70,t+4.5);
+    o2.type='sine'; o2.frequency.setValueAtTime(190,t); o2.frequency.linearRampToValueAtTime(280,t+1.6); o2.frequency.linearRampToValueAtTime(140,t+4.5);
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(.09,t+1.2); g.gain.setValueAtTime(.09,t+3.2); g.gain.exponentialRampToValueAtTime(0.0001,t+5);
+    o.connect(f); o2.connect(f); f.connect(g); g.connect(echoIn); o.start(t); o2.start(t); o.stop(t+5.1); o2.stop(t+5.1);
+  }
+  function creak(){
+    const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),f=ac.createBiquadFilter();
+    o.type='sawtooth'; o.frequency.setValueAtTime(rnd(38,55),t); o.frequency.linearRampToValueAtTime(rnd(28,45),t+1.2);
+    f.type='bandpass'; f.frequency.value=320; f.Q.value=4; env(g,t,.3,.12,1); o.connect(f); f.connect(g); g.connect(creakG); o.start(t); o.stop(t+1.6);
+  }
+  function update(d,t){
+    if(!on) return; depth=d; const now=ac.currentTime, k=.25;
+    const shallow=Math.max(0,1-d/120);
+    surf.gain.setTargetAtTime(Math.max(0,1-d/6)*.22,now,k);
+    rum.gain.setTargetAtTime(d<1?0:.55,now,k);
+    rumF.frequency.setTargetAtTime(90+Math.max(0,700*Math.pow(1-Math.min(1,d/3000),2)),now,k);
+    droneG.gain.setTargetAtTime(Math.min(1,Math.max(0,(d-300)/2500))*.07,now,.6);
+    creakG.gain.setTargetAtTime(d>6000?1:0,now,.5);
+    // 事件
+    if(d>1&&d<600&&t-lastBub>rnd(90,700)*(1+d/150)){ lastBub=t; bubble(); if(Math.random()<.4) setTimeout(bubble,60); }
+    if(d>60&&d<420&&t-lastMoan>9000){ lastMoan=t; moan(); }
+    if(d>1300&&d<3200&&t-lastClick>7000){ lastClick=t; click(); }
+    if(d>800&&d<6000&&t-lastPing>6500){ lastPing=t; ping(); }
+    if(d>6000&&Math.random()<.004) creak();
+  }
+  function set(v){
+    if(v&&!ac) init();
+    on=v; if(!ac) return;
+    if(v) ac.resume();
+    master.gain.setTargetAtTime(v?.9:0,ac.currentTime,.4);
+  }
+  return {set,update,get on(){return on;}};
+})();
+const sndBtn=document.getElementById('snd');
+function setSound(v){ Snd.set(v); sndBtn.setAttribute('aria-pressed',v); sndBtn.textContent=v?'音效：開':'音效：關'; }
+sndBtn.addEventListener('click',()=>setSound(!Snd.on));
+document.getElementById('heroPlay').addEventListener('click',()=>{ if(!Snd.on) setSound(true); });
+
 let playing=false,last=0;
 const playBtns=[document.getElementById('play'),document.getElementById('heroPlay')];
 function setPlay(v){ playing=v; last=0; document.getElementById('play').textContent=v?'暫停':'開始下潛'; }
@@ -299,6 +444,7 @@ function frame(t){
     it.el.style.opacity=Math.max(0,Math.min(1,1.2-Math.abs(y-H*.5)/(H*.62)));
   }
   gauge(p);
+  Snd.update(D*p*p,t);
   requestAnimationFrame(frame);
 }
 resize(); requestAnimationFrame(frame);
