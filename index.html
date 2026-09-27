@@ -416,10 +416,30 @@ const Snd=(function(){
     if(d>800&&d<6000&&t-lastPing>6500){ lastPing=t; ping(); }
     if(d>6000&&Math.random()<.004) creak();
   }
+  // iPhone：靜音開關會把 Web Audio 靜音。把音訊模式切成「播放媒體」，
+  // 並同時播放一段無聲音訊，讓 iOS（含 LINE 內建瀏覽器）改用媒體音量。
+  let keep=null;
+  function silentWav(){
+    const n=8000,b=new ArrayBuffer(44+n),v=new DataView(b),w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+    w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+    v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);
+    for(let i=0;i<n;i++)v.setUint8(44+i,128);
+    return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));
+  }
+  function unlockIOS(){
+    try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}
+    try{
+      if(!keep){ keep=document.createElement('audio'); keep.src=silentWav(); keep.loop=true; keep.setAttribute('playsinline',''); keep.setAttribute('x-webkit-airplay','deny'); }
+      const pr=keep.play(); if(pr&&pr.catch) pr.catch(()=>{});
+    }catch(e){}
+    try{ const s=ac.createBufferSource(); s.buffer=ac.createBuffer(1,1,22050); s.connect(ac.destination); s.start(0); }catch(e){}
+  }
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&on&&ac){ ac.resume(); if(keep) keep.play().catch(()=>{}); } });
   function set(v){
     if(v&&!ac) init();
     on=v; if(!ac) return;
-    if(v) ac.resume();
+    if(v){ unlockIOS(); ac.resume(); }
+    else if(keep) keep.pause();
     master.gain.setTargetAtTime(v?.9:0,ac.currentTime,.4);
   }
   return {set,update,get on(){return on;}};
@@ -436,7 +456,7 @@ const maxScroll=()=>Math.max(1,document.documentElement.scrollHeight-innerHeight
 playBtns.forEach(b=>b.addEventListener('click',()=>{ if(!playing&&scrollY>=maxScroll()-2) scrollTo(0,0); setPlay(!playing); }));
 document.getElementById('surface').addEventListener('click',()=>{setPlay(false);scrollTo(0,0);});
 layer.addEventListener('click',e=>{ if(e.target.closest('[data-up]')){setPlay(false);scrollTo(0,0);} });
-['wheel','touchstart'].forEach(ev=>addEventListener(ev,()=>{ if(playing) setPlay(false); },{passive:true}));
+['wheel','touchstart'].forEach(ev=>addEventListener(ev,e=>{ if(playing&&!(e.target.closest&&e.target.closest('button,a'))) setPlay(false); },{passive:true}));
 addEventListener('keydown',e=>{ if(['ArrowDown','ArrowUp','PageDown','PageUp','Space','Home','End'].includes(e.code)&&playing&&!e.target.closest('button')) setPlay(false); });
 
 const DUR=150000; let acc=0;
